@@ -26,4 +26,6 @@ A package that we are developing to navigate the robot using image based navigat
 
 version used is ubuntu 20.04 and ROS noetic                                        
 
+- clone the repo in your workspace
+
 
