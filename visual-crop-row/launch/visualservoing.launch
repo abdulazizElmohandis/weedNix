@@ -1,0 +1,13 @@
+<launch>
+
+ <!-- <include file="$(find visual_crop_row_navigation)/launch/camera_umd.launch" />  -->
+
+  <node pkg="visual_crop_row" type="agribot_vs_node" name="weednix_vs" output="screen">
+
+	  <rosparam command="load" file="$(find visual_crop_row)/params/agribot_vs_run.yaml"/>
+  </node>
+
+</launch>
+
+
+

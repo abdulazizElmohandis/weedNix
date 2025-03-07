@@ -1,0 +1,62 @@
+<launch>
+
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find robot_description)/worlds/farmWith1CropRow.world"/>
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui" value="true"/>
+    <arg name="headless" value="false"/>
+    <arg name="debug" value="false"/>
+  </include>
+  
+  <param name="robot_description" command="$(find xacro)/xacro $(find robot_description)/urdf/Robot.xacro"/>
+  
+  
+  
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="false" output="screen">
+  </node>
+  
+  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+    <param name="use_gui" value="true"/>
+  </node>
+  
+  
+  
+  <node name="weednix_spawn" pkg="gazebo_ros" type="spawn_model" output="screen" respawn="false"
+   args="-x -6.0 -y 0 -z 0.15 -Y 0 -R 0 -P 0 -Y 3.1416 -urdf -param robot_description -model weednix">
+  </node> 
+  
+  
+     <include file="$(find realsense2_camera)/launch/rs_camera.launch">
+        <!-- Camera resolution options -->
+        <arg name="camera" default="camera" />
+        <arg name="serial_no" default=""/> <!-- Specify your camera's serial number if needed -->
+        
+        <arg name="enable_color" default="true"/> 
+    	<arg name="enable_depth" default="false"/>
+    	<arg name="enable_infra1" default="false"/>
+    	<arg name="enable_infra2" default="false"/>
+    	<arg name="align_depth" default="false"/>
+	<arg name="enable_pointcloud" default="false"/>
+	<arg name="enable_sync" default="false"/>
+
+        
+        <arg name="color_width" default="640"/>
+        <arg name="color_height" default="480"/>
+    	<arg name="color_fps" default="20"/>
+    	
+    	<arg name="rgb_camera_profile" default="640x480x20"/>
+
+    </include>
+    
+    <node pkg="visual_servoing" type="row_crop_follower.py" name="row_crop_follower" output="screen" launch-prefix="python3"/>
+
+
+ 
+   <!-- Launch other nodes -->
+  <!-- <include file="$(find robot_description)/launch/controller.launch" /> -->
+
+
+
+  
+</launch>

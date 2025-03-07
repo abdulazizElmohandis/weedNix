@@ -1,0 +1,261 @@
+
+<robot name="Robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+<xacro:include filename="$(find robot_description)/urdf/materials.xacro" />
+<xacro:include filename="$(find robot_description)/urdf/Robot.trans" />
+<xacro:include filename="$(find robot_description)/urdf/Robot.gazebo" />
+<!-- <xacro:include filename="$(find robot_description)/urdf/_d455.urdf.xacro"/> -->
+<!-- Adjust position <xacro:include filename="$(find robot_description)/urdf/_d455.gazebo.xacro" /> -->
+
+
+
+<link name="d455_link">
+  <visual>
+    <geometry>
+      <box size="0.03 0.03 0.03"/>  <!-- Approximate size of RealSense D455 -->
+    </geometry>
+    <material name="silver"/>
+  </visual>
+</link>
+
+
+
+
+<link name="base_link">
+  <inertial>
+    <origin xyz="-0.027189401658204503 -0.10037080143514658 0.19143879147079398" rpy="0 0 0"/>
+    <mass value="81.09346205830776"/>
+    <inertia ixx="2.243447" iyy="4.174531" izz="5.087121" ixy="-0.041061" iyz="-0.01048" ixz="-0.019335"/>
+  </inertial>
+  <visual>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://robot_description/meshes/base_link.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://robot_description/meshes/base_link.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="tireBL_1">
+  <inertial>
+    <origin xyz="2.12193177473452e-07 -0.020000200783962835 4.323851252596711e-07" rpy="0 0 0"/>
+    <mass value="7.4513344158555475"/>
+    <inertia ixx="0.071689" iyy="0.1314" izz="0.071689" ixy="-0.0" iyz="0.0" ixz="0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.242773 -0.201013 -0.115439" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://robot_description/meshes/tireBL_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0.242773 -0.201013 -0.115439" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://robot_description/meshes/tireBL_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="tireFL_1">
+  <inertial>
+    <origin xyz="2.1219299420338622e-07 -0.020000200783962696 4.3238511950038916e-07" rpy="0 0 0"/>
+    <mass value="7.451334415875281"/>
+    <inertia ixx="0.071689" iyy="0.1314" izz="0.071689" ixy="-0.0" iyz="0.0" ixz="0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.164977 -0.201013 -0.115439" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://robot_description/meshes/tireFL_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.164977 -0.201013 -0.115439" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://robot_description/meshes/tireFL_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="tireFR_1">
+  <inertial>
+    <origin xyz="1.3894525133228974e-07 0.019999759216116797 4.144680840895143e-07" rpy="0 0 0"/>
+    <mass value="7.45133441585625"/>
+    <inertia ixx="0.071689" iyy="0.1314" izz="0.071689" ixy="0.0" iyz="-0.0" ixz="0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="-0.164977 0.405587 -0.115439" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://robot_description/meshes/tireFR_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="-0.164977 0.405587 -0.115439" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://robot_description/meshes/tireFR_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<link name="tireBR_1">
+  <inertial>
+    <origin xyz="1.3894525327518004e-07 0.019999759216117796 4.1446808517198175e-07" rpy="0 0 0"/>
+    <mass value="7.451334415856812"/>
+    <inertia ixx="0.071689" iyy="0.1314" izz="0.071689" ixy="0.0" iyz="-0.0" ixz="0.0"/>
+  </inertial>
+  <visual>
+    <origin xyz="0.242773 0.405587 -0.115439" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://robot_description/meshes/tireBR_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+    <material name="silver"/>
+  </visual>
+  <collision>
+    <origin xyz="0.242773 0.405587 -0.115439" rpy="0 0 0"/>
+    <geometry>
+      <mesh filename="package://robot_description/meshes/tireBR_1.stl" scale="0.001 0.001 0.001"/>
+    </geometry>
+  </collision>
+</link>
+
+<joint name="Revolute_5" type="continuous">
+  <origin xyz="-0.242773 0.201013 0.115439" rpy="0 0 0"/>
+  <parent link="base_link"/>
+  <child link="tireBL_1"/>
+  <axis xyz="0.0 -1.0 0.0"/>
+</joint>
+
+<joint name="Revolute_6" type="continuous">
+  <origin xyz="0.164977 0.201013 0.115439" rpy="0 0 0"/>
+  <parent link="base_link"/>
+  <child link="tireFL_1"/>
+  <axis xyz="0.0 -1.0 0.0"/>
+</joint>
+
+<joint name="Revolute_7" type="continuous">
+  <origin xyz="0.164977 -0.405587 0.115439" rpy="0 0 0"/>
+  <parent link="base_link"/>
+  <child link="tireFR_1"/>
+  <axis xyz="0.0 -1.0 0.0"/>
+</joint>
+
+<joint name="Revolute_8" type="continuous">
+  <origin xyz="-0.242773 -0.405587 0.115439" rpy="0 0 0"/>
+  <parent link="base_link"/>
+  <child link="tireBR_1"/>
+  <axis xyz="0.0 -1.0 0.0"/>
+</joint>
+
+<joint name="d455_mount_joint" type="fixed">
+  <parent link="base_link"/>  <!-- ✅ Attaches camera to robot -->
+  <child link="d455_link"/>   <!-- ✅ Camera link -->
+  <origin xyz="-0.395 -0.1 0.47" rpy="3.14 2.72 0"/>  <!-- Adjust position -->
+</joint>
+
+<link name="imu_link" />
+
+  <joint
+    name="imu_link_joint"
+    type="fixed">
+    <origin
+      xyz="0 0 0"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="imu_link" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+
+
+
+
+<!--  <xacro:sensor_d455 parent="base_link" use_nominal_extrinsics="true">
+<origin xyz="-0.4 -0.1 0.47" rpy="3.14 2.21 0"/>
+</xacro:sensor_d455>
+
+<xacro:gazebo_d455 camera_name="d455"
+    reference_link="d455_link"
+    topics_ns="/camera"
+    depth_optical_frame="d455_depth_optical_frame"
+    color_optical_frame="d455_color_optical_frame"
+    infrared1_optical_frame="d455_infra1_optical_frame"
+    infrared2_optical_frame="d455_infra2_optical_frame"
+    publish_pointcloud="true"/> -->
+
+<!-- front camera -->
+  <gazebo reference="d455_link">
+    <sensor type="camera" name="front_camera">
+      <update_rate>30.0</update_rate>
+      <camera name="head_front">
+        <horizontal_fov>1.57</horizontal_fov>
+        <vertical_fov>1.04</vertical_fov>
+        <image>
+          <width>1280</width>
+          <height>720</height>
+          <format>R8G8B8</format>
+        </image>
+        <clip>
+          <near>0.02</near>
+          <far>300</far>
+        </clip>
+        <noise>
+          <type>gaussian</type>
+          <!-- Noise is sampled independently per pixel on each frame.
+               That pixel's noise value is added to each of its color
+               channels, which at that point lie in the range [0,1]. -->
+          <mean>0.0</mean>
+          <stddev>0.007</stddev>
+        </noise>
+      </camera>
+      <plugin name="camera_controller" filename="libgazebo_ros_camera.so">
+        <alwaysOn>true</alwaysOn>
+        <updateRate>30.0</updateRate>
+        <cameraName>camera_sim/color</cameraName>
+        <imageTopicName>image_raw</imageTopicName>
+        <cameraInfoTopicName>camera_info</cameraInfoTopicName>
+        <frameName>d455_link</frameName>
+        <hackBaseline>0.07</hackBaseline>
+        <distortionK1>0.0</distortionK1>
+        <distortionK2>0.0</distortionK2>
+        <distortionK3>0.0</distortionK3>
+        <distortionT1>0.0</distortionT1>
+        <distortionT2>0.0</distortionT2>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+
+<gazebo>
+ <plugin name="skid_steer_drive_controller" filename="libgazebo_ros_skid_steer_drive.so">
+    <updateRate>100.0</updateRate>
+    <robotNamespace>/</robotNamespace>
+    <leftFrontJoint>Revolute_6</leftFrontJoint>
+    <rightFrontJoint>Revolute_7</rightFrontJoint>
+    <leftRearJoint>Revolute_5</leftRearJoint>
+    <rightRearJoint>Revolute_8</rightRearJoint>
+    <wheelSeparation>0.4</wheelSeparation>
+    <wheelDiameter>0.35</wheelDiameter>
+    <robotBaseFrame>base_link</robotBaseFrame>
+    <torque>40</torque>
+    <topicName>cmd_vel</topicName>
+    <broadcastTF>true</broadcastTF>
+    <odometryTopic>odom</odometryTopic>
+    <odometryFrame>odom</odometryFrame>
+    <covariance_x>0.001000</covariance_x>
+    <covariance_y>0.001000</covariance_y>
+    <covariance_yaw>0.100000</covariance_yaw>
+  </plugin>
+</gazebo>
+
+
+</robot>
