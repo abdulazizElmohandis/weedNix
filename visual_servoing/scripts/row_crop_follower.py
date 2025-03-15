@@ -9,7 +9,9 @@ class RowCropFollower:
     def __init__(self):
         rospy.init_node('row_crop_follower', anonymous=True)
         self.bridge = CvBridge()
-        self.image_sub = rospy.Subscriber("/camera/color/image_raw", Image, self.image_callback)
+        # /camera_sim/color/image_raw for simulation
+        # /camera/color/image_raw for RealSense
+        self.image_sub = rospy.Subscriber("/camera_sim/color/image_raw", Image, self.image_callback)
         self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=10)
         self.rate = rospy.Rate(10)  # 10 Hz loop rate
 
@@ -20,6 +22,7 @@ class RowCropFollower:
         self.point_spacing = 30  # Density of points
         self.display_extracted = True  # Toggle extracted points display
         self.kp = 0.005  # Proportional gain for steering
+        self.line_detected = False  # Track if a line has been detected
 
     def image_callback(self, msg):
         try:
@@ -32,12 +35,21 @@ class RowCropFollower:
 
             # Find contours
             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            filtered_contours = [cnt for cnt in contours if cv2.contourArea(cnt) > 500]
+            filtered_contours = [cnt for cnt in contours if 500 < cv2.contourArea(cnt) < 10000]
 
-            if self.display_extracted:
-                self.extract_and_draw_points(cv_image, filtered_contours)
-                self.fit_and_draw_line(cv_image, filtered_contours)
-                self.follow_line(cv_image, filtered_contours)
+            rospy.loginfo(f"Contours found: {len(contours)}")
+            rospy.loginfo(f"Filtered contours (valid size): {len(filtered_contours)}")
+
+            points = self.extract_and_draw_points(cv_image, filtered_contours)
+            line_params = self.fit_and_draw_line(cv_image, points)
+
+            rospy.loginfo(f"Extracted points: {len(points)}")
+
+
+            if line_params:
+                self.line_detected = True  # Set flag when a line is successfully detected
+            
+            self.follow_line(line_params)
 
             cv2.imshow("Original Image", cv_image)
             cv2.imshow("Mask", mask)
@@ -69,28 +81,40 @@ class RowCropFollower:
                     points.append((x_indices[i], y_indices[i]))
         return points
 
-    def fit_and_draw_line(self, image, contours):
-        points = self.extract_and_draw_points(image, contours)
-        if len(points) > 1:
+    def fit_and_draw_line(self, image, points):
+        if len(points) > 10:
+            if len(points) < 20:  # If too few points are detected
+                rospy.sleep(0.2)  # Slow down to reduce CPU load
             points = np.array(points, dtype=np.float32)
             [vx, vy, x, y] = cv2.fitLine(points, cv2.DIST_L2, 0, 0.01, 0.01)
+
+            # Ensure we don't divide by zero
+            if abs(vx) < 1e-6:
+                return None
+
             left_y = int((-x * vy / vx) + y)
             right_y = int(((image.shape[1] - x) * vy / vx) + y)
             cv2.line(image, (0, left_y), (image.shape[1], right_y), (0, 0, 255), 2)
             return (vx, vy, x, y)
+
         return None
 
-    def follow_line(self, image, contours):
-        line_params = self.fit_and_draw_line(image, contours)
-        if line_params:
+    def follow_line(self, line_params):
+        twist = Twist()
+
+        if self.line_detected and line_params:
             vx, vy, x, y = line_params
-            image_center = image.shape[1] // 2
+            image_center = 320  # Assuming 640px width, center is 320
             error = image_center - x
 
-            twist = Twist()
             twist.linear.x = 0.2  # Forward speed
             twist.angular.z = -self.kp * error  # Steering correction
-            self.cmd_pub.publish(twist)
+        else:
+            # Stop movement if no valid line is detected
+            twist.linear.x = 0.0
+            twist.angular.z = 0.0
+
+        self.cmd_pub.publish(twist)
 
 if __name__ == '__main__':
     try:
