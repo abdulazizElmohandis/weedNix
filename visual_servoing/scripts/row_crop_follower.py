@@ -20,26 +20,31 @@ class RowCropFollower:
         self.point_spacing = 70  # Density of points
         self.kp = 0.005  # Proportional gain for steering
         self.line_detected = False
+        self.show_images = False  # Flag to enable/disable image display
+
 
     def image_callback(self, msg):
         try:
             cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
             desired_width, desired_height = 640, 480  # Resize if needed
-            cv_image = cv2.resize(cv_image, (desired_width, desired_height), interpolation=cv2.INTER_LINEAR)
 
             # Define ROI 
-            roi_y_start = int(0.1 * desired_height)  
-            roi_y_end = desired_height  # End at full height
-            roi_x_start = 0
-            roi_x_end = desired_width
+            roi_y_start = int(0.1 * cv_image.shape[0])
+            roi = cv_image[roi_y_start:, :]  # Crop only once
 
-            # Crop the ROI for processing
-            roi = cv_image[roi_y_start:roi_y_end, roi_x_start:roi_x_end]
+            roi = cv2.resize(roi, (desired_width, desired_height), interpolation=cv2.INTER_LINEAR)
+
 
             # Convert to HSV and apply masking only in ROI
             hsv_image = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
             mask = cv2.inRange(hsv_image, (self.h_min, self.s_min, self.v_min), 
-                                        (self.h_max, self.s_max, self.v_max))
+                                         (self.h_max, self.s_max, self.v_max))
+
+                
+            kernel = np.ones((3, 3), np.uint8)
+            mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
+
+
 
             # Find contours in ROI
             
@@ -49,7 +54,7 @@ class RowCropFollower:
 
 
             # Draw ROI rectangle on the full image
-            cv2.rectangle(cv_image, (roi_x_start, roi_y_start), (roi_x_end, roi_y_end), (0, 255, 255), 2)
+            #cv2.rectangle(cv_image, (roi_x_start, roi_y_start), (roi_x_end, roi_y_end), (0, 255, 255), 2)
 
             points = self.extract_and_draw_points(roi, filtered_contours)  # Process only the ROI
             line_params = self.fit_and_draw_line(roi, points)
@@ -59,58 +64,47 @@ class RowCropFollower:
 
             self.follow_line(line_params)
 
-            cv2.drawContours(roi, filtered_contours, -1, (0, 0, 255), 2)  # Red color for contours
+            #cv2.drawContours(roi, filtered_contours, -1, (0, 0, 255), 2)  # Red color for contours
 
             # Show images
-            cv2.imshow("Full Image with ROI", cv_image)  # Full image with ROI marked
-            cv2.imshow("ROI Processing", roi)  # Show only the cropped ROI
-            cv2.imshow("Mask (ROI)", mask)  # Mask for ROI
-            cv2.waitKey(1)
+            #cv2.imshow("Full Image with ROI", cv_image)  # Full image with ROI marked
+            if self.show_images:
+                cv2.imshow("ROI Processing", roi)  # Show only the cropped ROI
+                cv2.imshow("Mask (ROI)", mask)  # Mask for ROI
+                cv2.waitKey(1)
 
             self.rate.sleep()
 
         except Exception as e:
             rospy.logerr(f"Error in image_callback: {e}")
 
-
-    def extract_and_draw_points(self, image, contours):
+    def extract_and_draw_points(self, image, contours, spacing=30):
         points = []
-        
         rospy.loginfo(f"Total contours found: {len(contours)}")
 
-        for cnt in contours:
-            # Approximate contour
-            epsilon = 1.0
-            approx_contour = cv2.approxPolyDP(cnt, epsilon, True)
-            
-            # Find enclosing circle
-            (x, y), radius = cv2.minEnclosingCircle(approx_contour)
-            center = (int(x), int(y))
-            radius = int(radius)
+        mask = np.zeros(image.shape[:2], dtype=np.uint8)
+        cv2.drawContours(mask, contours, -1, 255, thickness=cv2.FILLED)
 
-            rospy.loginfo(f"Contour Center: {center}, Radius: {radius}")
+        y_coords, x_coords = np.where(mask == 255)  # Faster than iterating
+        sampled_indices = np.arange(0, len(x_coords), spacing)
+        sampled_indices = np.arange(0, len(x_coords), spacing)
 
-            # Debugging: Draw all contours before filtering
-            cv2.drawContours(image, [approx_contour], -1, (0, 255, 255), 2)  # Yellow
-
-            # Loosen filtering for testing
-            if radius >= 5:  
-                rospy.loginfo(f"✔ PASSED -> Center: {center}, Radius: {radius}")
-
-                cv2.circle(image, center, radius, (0, 255, 0), 2)  # Green circle
-                cv2.circle(image, center, 3, (255, 0, 0), -1)  # Blue dot at center
-
-                points.append(center)
+        
+        for i in sampled_indices:
+            x, y = x_coords[i], y_coords[i]
+            cv2.circle(image, (x, y), 2, (255, 0, 0), -1)
+            points.append((x, y))
 
         rospy.loginfo(f"Total extracted points: {len(points)}")
         return points
 
 
 
+
+
+
     def fit_and_draw_line(self, image, points):
-        if len(points) > 10:
-            if len(points) < 20:
-                rospy.sleep(0.2)  # Slow down processing
+        if len(points) >= 2:
             points = np.array(points, dtype=np.float32)
             [vx, vy, x, y] = cv2.fitLine(points, cv2.DIST_L2, 0, 0.01, 0.01)
 
