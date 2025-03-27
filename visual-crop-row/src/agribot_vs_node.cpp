@@ -22,12 +22,20 @@ int main(int argc, char** argv) {
   agribot_vs::AgribotVSNodeHandler vs_NodeH(nodeHandle);
   ros::Rate loop_rate(vs_NodeH.agribotVS.fps);
 
-  if(vs_NodeH.agribotVS.mask_tune)cout << "Mask Tune Mode ..." << endl;
+  if(!vs_NodeH.agribotVS.mask_tune)cout << "Mask Tune Mode ..." << endl;
+  if(vs_NodeH.agribotVS.single_camera_mode)cout << "Single Camera Mode (Front Camera will only be used..)" << endl;
 
-  agribot_vs::camera *I_primary;
-  
-  I_primary = &vs_NodeH.agribotVS.front_cam;
-    
+  agribot_vs::camera *I_primary,*I_secondary;
+  if(vs_NodeH.agribotVS.camera_ID == 1){
+    I_primary = &vs_NodeH.agribotVS.front_cam;
+    I_secondary = &vs_NodeH.agribotVS.back_cam;
+  }else {
+    I_primary = &vs_NodeH.agribotVS.back_cam;
+    I_secondary = &vs_NodeH.agribotVS.front_cam;
+  }
+  vs_NodeH.agribotVS.initialize_neigbourhood(*I_primary);
+  vs_NodeH.agribotVS.initialize_neigbourhood(*I_secondary);
+  int cnt =0;
   
   while(ros::ok()){
    // if(cnt < vs_NodeH.agribotVS.max_row_num){
