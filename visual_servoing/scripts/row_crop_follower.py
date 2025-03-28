@@ -22,7 +22,7 @@ class RowCropFollower:
         self.point_spacing = 70  # Density of points
         self.kp = 0.005  # Proportional gain for steering
         self.line_detected = False
-        self.show_images = False  # Flag to enable/disable image display
+        self.show_images = True  # Flag to enable/disable image display
 
 
     def image_callback(self, msg):
