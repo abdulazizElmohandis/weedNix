@@ -2,21 +2,28 @@ import random
 
 def generate_new_coordinates(prev_x, base_y, randomize=True):
     """
-    Generate new coordinates for the plant in the row:
-    - If randomize=False (uniform placement): X increases by a fixed value (0.6), and Y remains the same as base_y.
-    - If randomize=True (random placement): X increases by a random value between 0.21 and 0.74, 
-      and Y is adjusted with a small random offset.
+    Generate new coordinates for a plant in a row.
+    
+    Parameters:
+      prev_x (float): The previous x-coordinate.
+      base_y (float): The fixed base y-coordinate for the row.
+      randomize (bool): If True, applies random variation to both x and y.
+                        If False, x increases by a fixed value and y remains unchanged.
+    
+    Returns:
+      tuple: A tuple containing the new x-coordinate and the plant's y-coordinate.
+             Note that base_y remains constant for the row.
     """
     if randomize:
-        delta_x = round(random.uniform(0.21, 0.74), 3)
+        delta_x = round(random.uniform(0.45, 1.274), 3)
         new_x = round(prev_x + delta_x, 3)
-        y_offset = round(random.uniform(0.0053, 0.2530) * random.choice([-1, 1]), 3)
-        new_y = round(base_y + y_offset, 3)
+        y_offset = round(random.uniform(0.0053, 0.25) * random.choice([-1, 1]), 3)
+        plant_y = round(base_y + y_offset, 3)
     else:
-        delta_x = 0.6
+        delta_x = 0.7
         new_x = round(prev_x + delta_x, 3)
-        new_y = round(base_y, 3)
-    return new_x, new_y
+        plant_y = round(base_y, 3)
+    return new_x, plant_y
 
 # Template for generating the plant model
 template = """
@@ -70,53 +77,55 @@ template = """
     </model>"""
 
 ######################################
-# Section 1: Uniformly spaced plants
+# Section 1: Uniformly Spaced Plants
 ######################################
 num_rows_reg = 3        # Number of rows
 row_length_reg = 14     # Length of each row
-row_spacing_reg = 1     # Vertical spacing between rows
-original_x_reg = -16    # Starting X position for the first row
-original_y_reg = -9     # Starting Y position for the first row
+row_spacing_reg = 2     # Vertical spacing between rows
+original_x_reg = -16    # Starting x-coordinate for the first row
+original_y_reg = -5     # Starting y-coordinate for the first row
 original_name_reg = "Stander"
 
 regular_lines = []
 
 for row in range(num_rows_reg):
-    base_y = original_y_reg + row * row_spacing_reg
+    base_y = original_y_reg + row * row_spacing_reg  # Fixed base y-coordinate for each row
     current_x = original_x_reg
     plant_num = 1
     while current_x - original_x_reg < row_length_reg:
-        name = f"{original_name_reg}_R{row+1}_P{plant_num}"
-        current_x, new_y = generate_new_coordinates(current_x, base_y, randomize=False)
-        pose = f"{current_x} {new_y} 0 0 -0 0"
+        name = f"{original_name_reg}_G2_R{row+1}_P{plant_num}"
+        new_x, plant_y = generate_new_coordinates(current_x, base_y, randomize=False)
+        pose = f"{new_x} {plant_y} 0 0 -0 0"
         regular_lines.append(template.format(name, pose).strip())
+        current_x = new_x   # Update x-coordinate only; base_y remains unchanged for the row
         plant_num += 1
 
 ######################################
-# Section 2: Randomly spaced plants
+# Section 2: Randomly Spaced Plants
 ######################################
-num_rows_rand = 0        # Number of rows
+num_rows_rand = 3        # Number of rows
 row_length_rand = 14     # Length of each row
-row_spacing_rand = 1     # Vertical spacing between rows
-original_x_rand = 2      # Starting X position for the first row
-original_y_rand = -9     # Starting Y position for the first row
+row_spacing_rand = 2     # Vertical spacing between rows
+original_x_rand = 3      # Starting x-coordinate for the first row
+original_y_rand = -5     # Starting y-coordinate for the first row
 original_name_rand = "Random"
 
 random_lines = []
 
 for row in range(num_rows_rand):
-    base_y = original_y_rand + row * row_spacing_rand
+    base_y = original_y_rand + row * row_spacing_rand  # Fixed base y-coordinate for each row
     current_x = original_x_rand
     plant_num = 1
     while current_x - original_x_rand < row_length_rand:
-        name = f"{original_name_rand}_R{row+1}_P{plant_num}"
-        current_x, new_y = generate_new_coordinates(current_x, base_y, randomize=True)
-        pose = f"{current_x} {new_y} 0 0 -0 0"
+        name = f"{original_name_rand}_G2_R{row+1}_P{plant_num}"
+        new_x, plant_y = generate_new_coordinates(current_x, base_y, randomize=True)
+        pose = f"{new_x} {plant_y} 0 0 -0 0"
         random_lines.append(template.format(name, pose).strip())
+        current_x = new_x   # Update x-coordinate only; base_y remains unchanged for the row
         plant_num += 1
 
 ######################################
-# Merge results and save to file
+# Merge Results and Save to File
 ######################################
 output_text = "<!-- add regular lines -->\n"
 output_text += "".join(regular_lines)
