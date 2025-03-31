@@ -1,0 +1,20 @@
+odom_frame: odom
+base_link_frame: base_link
+world_frame: odom
+publish_tf: true
+frequency: 50
+odom0: /odom
+imu0: /imu/data
+odom0_config: [true, true, false,  # X, Y position (No Z)
+               false, false, true,  # Yaw only (No Roll/Pitch)
+               true, false, false,  # X velocity only (No Z)
+               false, false, true,  # Yaw rate only
+               false, false, false] # No acceleration
+
+imu0_config:  [false, false, false,  # No position from IMU
+               false, false, true,   # Only use yaw
+               false, false, false,  # No velocity
+               false, false, true,   # Use yaw rate
+               false, false, false]  # No acceleration
+
+output: /odometry/filtered  # Make sure this is present

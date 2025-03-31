@@ -1,0 +1,177 @@
+#!/usr/bin/env python3
+import rospy
+from geometry_msgs.msg import Point32,TransformStamped,Quaternion,PoseStamped,Twist
+from tf import TransformBroadcaster
+from nav_msgs.msg import Odometry,Path
+from sensor_msgs.msg import Imu
+import math
+from tf.transformations import  quaternion_from_euler,euler_from_quaternion
+import threading
+#radius of wheel (meter)
+R =0.30
+#number of ticks per revolution (encoder)
+N= 10000
+#distance between two wheels (meter)
+L = 0.60    
+
+class generate_odom():
+    def __init__(self):
+        rospy.init_node('odometry_publisher')
+        self.odom_pub=rospy.Publisher('/odom', Odometry, queue_size=10)
+        topic_encoder_name="/encoder"
+        rospy.Subscriber(topic_encoder_name, Point32, self.encoder_cb)
+        topic_imu_name='/quaternion'
+        rospy.Subscriber('/imu/data', Imu, self.imu_cb)
+        #rospy.Subscriber(topic_imu_name,Quaternion,self.imu_cb)
+        self.path_publisher = rospy.Publisher('/robot_path', Path, queue_size=10)
+        #rospy.Subscriber('/cmd_vel',Twist,self.cmd_cb)
+        self.start_draw_thred=threading.Thread(target=self.draw_end_point_rviz)
+        self.Dc=0.0
+        self.RtickOld=0.0
+        self.RtickNew=0.0
+        self.LtickOld=0.0
+        self.LtickNew=0.0
+        self.ticks_right=0.0
+        self.ticks_left=0.0
+        self.x=0.0
+        self.y=0.0
+        self.th_enc=0.0
+        self.vx=0.0
+        self.vy=0.0
+        self.vth=0.0  
+        self.current_time=rospy.Time.now()
+        self.last_time=rospy.Time.now()
+        self.get_data_imu=False
+        self.get_data_encoder=False
+        self.yaw=0.0
+        self.yaw_old=0.0
+        self.yaw_new=0.0
+        self.path=Path()
+        self.robot_move=False 
+        self.terminate=False
+
+    def imu_cb(self,message):
+        quat = message.orientation 
+        x,y,z,w=quat.x,quat.y,quat.z,quat.w
+        self.roll,self.pitch,self.yaw_new=euler_from_quaternion([x,y,z,w])
+        self.get_data_imu=True
+        
+
+
+    def encoder_cb(self,message) :
+        self.RtickNew=message.x
+        self.LtickNew=message.y
+        self.get_data_encoder=True
+        
+        
+        self.generate_odom_tf()
+        self.generate_odom_msg() 
+            
+    
+    # def cmd_cb(self,message):
+    #     if abs(message.linear.x)>0.0:
+    #         self.robot_move=True
+    #     else:
+    #         self.robot_move=False 
+        
+    
+    def generate_odom_tf(self):
+        self.ticks_right=(self.RtickNew-self.RtickOld)
+        self.ticks_left=(self.LtickNew-self.LtickOld)
+        self.Dc=((2*3.14*R*(self.ticks_right)/N)+((2*3.14*R*(self.ticks_left)/N)))/2
+        #/////////////////////////////equation on tiva c ///////////////////////////////////////////////
+        distance_right_encoder=2*3.14*R*(self.RtickNew-self.RtickOld)/N
+        distance_left_encoder=2*3.14*R*(self.LtickNew-self.LtickOld)/N
+        #////////////////////////////////////////////////////////////////////////////////////////////////
+        self.x+=self.Dc*math.cos(-self.yaw)
+        self.y+=self.Dc*math.sin(-self.yaw)
+        self.yaw+=(self.yaw_new-self.yaw_old)
+        # self.x_final = ( math.cos( self.yaw ) * self.x - math.sin( self.yaw ) * self.y )
+        # self.y_final = ( math.sin( self.yaw ) * self.x + math.cos( self.yaw ) * self.y )
+        self.RtickOld=self.RtickNew
+        self.LtickOld=self.LtickNew
+        self.yaw_old=self.yaw_new
+        self.current_time=rospy.Time.now()
+        dt = (self.current_time - self.last_time).to_sec()
+        self.vx=(self.Dc*math.cos(self.yaw))/dt
+        self.vy=(self.Dc*math.sin(self.yaw))/dt
+        #this equation will compare them with vr and vl that will calculated from linear velocity and angular velocity and apply pid on them 
+        #this speed comes from encoder from arduino so i will use pid to control vl and vr onlyyyyy (it will repair linear distance and angular distance)
+        speed_right_encoder=distance_right_encoder/dt
+        speed_left_encoder=distance_left_encoder/dt
+        #////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        self.vth=(((2*3.14*R*(self.RtickNew-self.RtickOld)/N)-((2*3.14*R*(self.LtickNew-self.LtickOld)/N)))/L)/dt
+        #to here i calculated the odom then i need to calculate tf
+        self.odom_quat=quaternion_from_euler(0,0,-self.yaw)
+        odom_trans=TransformStamped()
+        odom_trans.header.stamp=self.current_time
+        odom_trans.header.frame_id = "odom"
+        odom_trans.child_frame_id = "base_link"
+        odom_trans.transform.translation.x = self.x
+        odom_trans.transform.translation.y = self.y
+        odom_trans.transform.translation.z = 0.0
+        odom_trans.transform.rotation.x = self.odom_quat[0]
+        odom_trans.transform.rotation.y = self.odom_quat[1]
+        odom_trans.transform.rotation.z = self.odom_quat[2]
+        odom_trans.transform.rotation.w = self.odom_quat[3]
+
+        trans_broadcaster=TransformBroadcaster()
+        trans_broadcaster.sendTransform((odom_trans.transform.translation.x,odom_trans.transform.translation.y,odom_trans.transform.translation.z),(odom_trans.transform.rotation.x,odom_trans.transform.rotation.y,odom_trans.transform.rotation.z,odom_trans.transform.rotation.w),odom_trans.header.stamp,odom_trans.child_frame_id,odom_trans.header.frame_id)
+        
+
+    def generate_odom_msg(self):
+        #odometry
+        odom=Odometry()
+        odom.header.stamp=self.current_time
+        odom.header.frame_id = "odom"
+        odom.child_frame_id = "base_link"
+        #set the position
+        odom.pose.pose.position.x = self.x
+        odom.pose.pose.position.y = self.y
+        odom.pose.pose.position.z = 0.0
+        odom.pose.pose.orientation.x = self.odom_quat[0]
+        odom.pose.pose.orientation.y = self.odom_quat[1]
+        odom.pose.pose.orientation.z = self.odom_quat[2]
+        odom.pose.pose.orientation.w = self.odom_quat[3]
+
+        #set the velocity
+        message = odom.twist.twist
+        odom.twist.twist.linear.x = self.vx
+        odom.twist.twist.linear.y = self.vy
+        odom.twist.twist.angular.z = self.vth
+        if abs(message.linear.x)>0.0:
+            self.robot_move=True
+        else:
+            self.robot_move=False 
+        
+        self.odom_pub.publish(odom)
+        self.last_time=self.current_time
+
+    def draw_end_point_rviz(self):
+        """
+        This function is responsible for drawing the end point of the upper group on rviz
+        """
+       # Set the frame ID for the path
+        while not self.terminate:
+            if self.robot_move:
+                self.path.header.frame_id = 'odom'
+                
+                # Generate a few pose waypoints for the path
+                pose1 = PoseStamped()
+                pose1.pose.position.x = self.x
+                pose1.pose.position.y = self.y
+                pose1.pose.orientation.w = 1.0
+                self.path.poses.append(pose1)
+                self.path_publisher.publish(self.path)
+        
+
+pro=generate_odom()
+pro.start_draw_thred.start()
+while not rospy.is_shutdown() :
+    try:
+       rospy.spin()
+            
+    except rospy.ROSInterruptException :
+        print('node closed')
+        pro.terminate=True
+
