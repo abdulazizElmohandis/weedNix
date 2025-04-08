@@ -1,5 +1,4 @@
 # weedNix
-# تعبتتتتتتتتت
 
 # This is a repo for weedNix graduation project
 
