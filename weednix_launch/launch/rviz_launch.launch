@@ -1,0 +1,5 @@
+<launch>
+    <arg name="rviz_config" default="$(find weednix_launch)/config/rviz_config.rviz"/>
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rviz_config)" output="screen"/>
+</launch>
+

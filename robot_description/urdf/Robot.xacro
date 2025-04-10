@@ -244,11 +244,12 @@
     <leftRearJoint>Revolute_5</leftRearJoint>
     <rightRearJoint>Revolute_8</rightRearJoint>
     <wheelSeparation>0.4</wheelSeparation>
+    <wheelSeparationRear>0.4</wheelSeparationRear>
     <wheelDiameter>0.35</wheelDiameter>
     <robotBaseFrame>base_link</robotBaseFrame>
     <torque>40</torque>
     <topicName>cmd_vel</topicName>
-    <broadcastTF>true</broadcastTF>
+    <broadcastTF>false</broadcastTF>
     <odometryTopic>odom</odometryTopic>
     <odometryFrame>odom</odometryFrame>
     <covariance_x>0.001000</covariance_x>
