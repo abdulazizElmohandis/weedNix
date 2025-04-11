@@ -27,11 +27,11 @@ int main(int argc, char** argv) {
 
   agribot_vs::camera *I_primary,*I_secondary;
   if(vs_NodeH.agribotVS.camera_ID == 1){
-    I_primary = &vs_NodeH.agribotVS.front_cam;
-    I_secondary = &vs_NodeH.agribotVS.back_cam;
+      I_primary = &vs_NodeH.agribotVS.front_cam;
+      I_secondary = &vs_NodeH.agribotVS.back_cam;
   }else {
-    I_primary = &vs_NodeH.agribotVS.back_cam;
-    I_secondary = &vs_NodeH.agribotVS.front_cam;
+      I_primary = &vs_NodeH.agribotVS.back_cam;
+      I_secondary = &vs_NodeH.agribotVS.front_cam;
   }
   vs_NodeH.agribotVS.initialize_neigbourhood(*I_primary);
   vs_NodeH.agribotVS.initialize_neigbourhood(*I_secondary);
@@ -49,19 +49,21 @@ int main(int argc, char** argv) {
         vs_NodeH.agribotVS.switching_controller(*I_primary, *I_secondary, vs_NodeH.agribotVS.min_points_switch);
 
         if(vs_NodeH.agribotVS.camera_ID == 1){
-          I_primary = &vs_NodeH.agribotVS.front_cam;
-          I_secondary = &vs_NodeH.agribotVS.back_cam;
+            I_primary = &vs_NodeH.agribotVS.front_cam;
+            I_secondary = &vs_NodeH.agribotVS.back_cam;
         }else {
-          I_primary = &vs_NodeH.agribotVS.back_cam;
-          I_secondary = &vs_NodeH.agribotVS.front_cam;
+            I_primary = &vs_NodeH.agribotVS.back_cam;
+            I_secondary = &vs_NodeH.agribotVS.front_cam;
         }
+
+        vs_NodeH.agribotVS.shift_neighbourhood(*I_primary, vs_NodeH.agribotVS.steering_dir);
+        vs_NodeH.agribotVS.is_in_neigbourhood(*I_primary);
 
         vs_NodeH.agribotVS.compute_feature_point(*I_primary);
         vs_NodeH.agribotVS.Controller(*I_primary,*I_secondary);
-      
-//yosef 
-       vs_NodeH.agribotVS.shift_neighbourhood(*I_primary, vs_NodeH.agribotVS.steering_dir);
-       vs_NodeH.agribotVS.is_in_neigbourhood(*I_primary);
+
+        // ... other code ...
+    }
 //
         if(!I_primary->image.empty()){
           vs_NodeH.agribotVS.draw_neighbourhood(*I_primary);
@@ -98,7 +100,7 @@ int main(int argc, char** argv) {
     if(cnt < 1000)cnt++;
     ros::spinOnce();
     loop_rate.sleep();
-  }
+  
  
   return 0;
 }
