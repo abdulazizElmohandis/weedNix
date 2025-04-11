@@ -18,9 +18,11 @@
   
    <!-- <include file="$(find agribot_navigation)/launch/agribot_navigation.launch"/> -->
 
-    <node pkg="visual_servoing" type="row_crop_follower.py" name="row_crop_follower" output="screen" launch-prefix="python3"/>
+     <node pkg="visual_servoing" type="row_crop_follower.py" name="row_crop_follower" output="screen" launch-prefix="python3"/> 
   
- 
+    <!-- <include file="$(find visual_servoing)/launch/row_crop_follower_with_nh.launch"/> -->
+     
+     
    <!-- Launch other nodes -->
   <!-- <include file="$(find robot_description)/launch/controller.launch" /> -->
 
