@@ -3,11 +3,19 @@
     <include file="$(find weednix_launch)/launch/gazebo.launch" />
 
 
+    <node pkg="visual_servoing" type="row_crop_follower.py" name="row_crop_follower" output="screen" launch-prefix="python3"/>
+
 
     <!-- Launch EKF -->
     <node pkg="robot_localization" type="ekf_localization_node" name="ekf_filter_node" output="screen">
         <rosparam command="load" file="$(find weednix_launch)/config/ekf.yaml" />
     </node>
+
+
+
+  <node name="path_publisher" pkg="visual_servoing" type="path_publisher" output="screen" />
+
+
 
     <!-- Launch RViz -->
     <include file="$(find weednix_launch)/launch/rviz_launch.launch" />
