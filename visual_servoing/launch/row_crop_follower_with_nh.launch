@@ -1,4 +1,8 @@
 <launch>
+  <!-- Load the parameters from the YAML file -->
+  <rosparam file="$(find visual_servoing)/config/row_crop_config.yaml" command="load" />
+
+  <!-- Original node configuration -->
   <node pkg="visual_servoing" type="row_crop_follower.py" name="row_crop_follower" output="screen">
     <param name="width" value="640" />
     <param name="height" value="480" />

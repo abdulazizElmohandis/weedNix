@@ -4,6 +4,10 @@ import rospy
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist
 from cv_bridge import CvBridge
+import tf
+from nav_msgs.msg import Odometry
+import rospkg  # Import the rospkg library
+import yaml
 
 class NeighbourhoodTracker:
     def __init__(self, image_width, image_height, initial_Xc, initial_Yc, width_L, height_H):
@@ -142,7 +146,7 @@ class NeighbourhoodTracker:
             # print("Warning: Invalid input to update_position_for_next_frame.")
             return  # Do not update if input is invalid
 
-        if all_detected_points.shape[0] > 0:
+        if all_detected_points.shape[0] > 5: # Require a *minimum* number of points
             # Calculate the window boundaries
             half_L = self.width_L / 2.0
             half_H = self.height_H / 2.0
@@ -159,6 +163,7 @@ class NeighbourhoodTracker:
             image_center_y = self.image_height / 2.0
             # Adjust the Y position *gradually* towards the center
             self.current_Yc += 0.1 * (image_center_y - self.current_Yc)  # Adjust 0.1 for speed
+            self.current_Xc = self.image_width / 2.0 #move to the center
 
         # Optional: Clamp the center X and Y to keep the window within bounds
         min_center_x = self.width_L / 2.0
@@ -234,21 +239,238 @@ class RowCropFollower:
         self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=10)
         self.rate = rospy.Rate(10)  # 10 Hz loop rate
 
-        # Parameters
-        self.h_min, self.h_max = 35, 85  # Green color range
-        self.s_min, self.s_max = 50, 255
-        self.v_min, self.v_max = 50, 255
-        self.point_spacing = 70  # Density of points
-        self.kp = 0.005  # Proportional gain for steering
-        self.line_detected = False
-        self.show_images = True  # Flag to enable/disable image display
+        # Load parameters from YAML file
+        # Get the path to the package
+        rospack = rospkg.RosPack()
+        package_path = rospack.get_path('visual_servoing')  # Replace 'visual_servoing' with your package name
+
+        # Construct the path to the YAML file
+        config_file_path = package_path + '/config/row_crop_config.yaml'
+
+        # Load parameters from the YAML file
+        rospy.loginfo("Loading parameters from %s", config_file_path)
+
+        rospy.set_param('row_crop_follower', self.load_yaml(config_file_path))
+
+        self.row_length = rospy.get_param('row_crop_follower/row_length')
+        self.row_spacing = rospy.get_param('row_crop_follower/row_spacing')
+        self.field_direction = rospy.get_param('row_crop_follower/field_direction')
+        self.end_of_row_threshold = rospy.get_param('row_crop_follower/end_of_row_threshold')
+        self.wrong_distance_threshold = rospy.get_param('row_crop_follower/wrong_distance_threshold') # Load the new parameter
+        self.use_odometry = rospy.get_param('row_crop_follower/use_odometry') # Load the use_odometry parameter
+        self.use_feedback = rospy.get_param('row_crop_follower/use_feedback') # Load the use_feedback parameter
+
+        self.neighbourhood_width = rospy.get_param('row_crop_follower/neighbourhood_width')
+        self.neighbourhood_height = rospy.get_param('row_crop_follower/neighbourhood_height')
+        self.initial_x = rospy.get_param('row_crop_follower/initial_x')
+        self.initial_y = rospy.get_param('row_crop_follower/initial_y')
+
+        self.h_min = rospy.get_param('row_crop_follower/h_min')
+        self.h_max = rospy.get_param('row_crop_follower/h_max')
+        self.s_min = rospy.get_param('row_crop_follower/s_min')
+        self.s_max = rospy.get_param('row_crop_follower/s_max')
+        self.v_min = rospy.get_param('row_crop_follower/v_min')
+        self.v_max = rospy.get_param('row_crop_follower/v_max')
+        self.point_spacing = rospy.get_param('row_crop_follower/point_spacing')
+        self.kp = rospy.get_param('row_crop_follower/kp')
+
+        self.A = rospy.get_param('row_crop_follower/A')
+        theta_degrees = rospy.get_param('row_crop_follower/theta_degrees')
+        self.theta = np.radians(theta_degrees) # Convert to radians
+        self.linear_speed = rospy.get_param('row_crop_follower/linear_speed')
+        self.angular_speed = rospy.get_param('row_crop_follower/angular_speed')
+
+        self.R = self.row_spacing * np.sin(self.theta)
 
         # Neighbourhood Tracker Parameters (adjust these!)
-        self.neighbourhood_width = 300  # Adjust as needed
-        self.neighbourhood_height = 200  # Adjust as needed
-        self.initial_x = 320  # Center of the image
-        self.initial_y = 240  # Center of the image (480 / 2)
         self.tracker = NeighbourhoodTracker(640, 480, self.initial_x, self.initial_y, self.neighbourhood_width, self.neighbourhood_height) # Image width and height
+
+        # State machine
+        self.state = "following"  # "following", "turning", "exiting", "diagonal1", "rotating1", "diagonal2", "rotating2", "entering"
+
+        # Odometry data
+        self.current_x = 0.0
+        self.current_y = 0.0
+        self.current_yaw = 0.0 # in radians
+
+        self.initial_x = 0.0
+        self.initial_y = 0.0
+        self.initial_yaw = 0.0
+
+        self.odom_sub = rospy.Subscriber("/odometry/filtered", Odometry, self.odom_callback) #subscribe to the odometry topic
+
+        self.no_green_frames = 0 # Counter for consecutive frames with low green pixels
+        self.no_green_threshold = 3 # Number of consecutive frames required to trigger turn
+
+    def load_yaml(self, file_path):
+        """
+        Load YAML data from a file.
+        """
+        try:
+            with open(file_path, 'r') as file:
+                return yaml.safe_load(file)
+        except Exception as e:
+            rospy.logerr("Failed to load YAML file: %s", str(e))
+            return {}
+
+    def odom_callback(self, msg):
+        """
+        Callback function to update the current position and orientation from odometry data.
+        """
+        self.current_x = msg.pose.pose.position.x
+        self.current_y = msg.pose.pose.position.y
+
+        # Convert quaternion to Euler angles (yaw)
+        quaternion = (
+            msg.pose.pose.orientation.x,
+            msg.pose.pose.orientation.y,
+            msg.pose.pose.orientation.z,
+            msg.pose.pose.orientation.w
+        )
+        euler = tf.transformations.euler_from_quaternion(quaternion)
+        self.current_yaw = euler[2]  # Yaw angle in radians
+
+        #rospy.loginfo(f"Current X: {self.current_x}, Y: {self.current_y}, Yaw: {self.current_yaw}")
+
+    def execute_turning_maneuver(self):
+        twist = Twist()
+
+        if self.state == "exiting":
+            rospy.loginfo("Exiting row...")
+            # Move forward by distance A
+            target_distance = self.A
+            if self.move_straight(target_distance, self.linear_speed):
+                self.state = "rotating1"
+                rospy.loginfo("Exiting row complete. Rotating...")
+
+        elif self.state == "rotating1":
+            # Rotate by angle theta
+            target_angle = self.theta
+            if self.rotate(target_angle, self.angular_speed):
+                self.state = "diagonal1"
+                rospy.loginfo("Rotating 1 complete. Moving Diagonally...")
+
+        elif self.state == "diagonal1":
+            # Move diagonally by distance R
+            target_distance = self.R
+            if self.move_straight(target_distance, self.linear_speed):
+                self.state = "rotating2"
+                rospy.loginfo("Diagonal 1 complete. Rotating...")
+
+        elif self.state == "rotating2":
+            # Rotate by angle (180 - 2*theta)
+            target_angle = np.pi - 2 * self.theta  # 180 degrees - 2*theta
+            if self.rotate(target_angle, self.angular_speed):
+                self.state = "diagonal2"
+                rospy.loginfo("Rotating 2 complete. Moving Diagonally...")
+
+        elif self.state == "diagonal2":
+            # Move diagonally by distance R
+            target_distance = self.R
+            if self.move_straight(target_distance, self.linear_speed):
+                self.state = "rotating3"
+                rospy.loginfo("Diagonal 2 complete. Rotating...")
+
+        elif self.state == "rotating3":
+            # Rotate by angle theta
+            target_angle = self.theta
+            if self.rotate(target_angle, self.angular_speed):
+                self.state = "entering"
+                rospy.loginfo("Rotating 3 complete. Entering row...")
+
+        elif self.state == "entering":
+            # Move forward by distance A
+            target_distance = self.A
+            if self.move_straight(target_distance, self.linear_speed):
+                rospy.loginfo("Entering row complete. Switching to following...")
+                self.state = "following"
+                self.initial_x = self.current_x
+                self.initial_y = self.current_y
+                self.initial_yaw = self.current_yaw
+
+        else:
+            # Should not happen
+            rospy.logerr("Invalid state!")
+            twist = Twist()
+            twist.linear.x = 0.0
+            twist.angular.z = 0.0
+            self.cmd_pub.publish(twist)
+            return
+
+    def move_straight(self, distance, speed):
+        """
+        Moves the robot straight for a given distance.  Returns True if the movement is complete.
+        """
+        twist = Twist()
+        start_time = rospy.Time.now()
+        if self.use_feedback:
+            start_x = self.current_x
+            start_y = self.current_y
+            traveled_distance = 0.0
+            rospy.loginfo(f"Moving straight for {distance} meters (using feedback)")
+
+            while traveled_distance < distance:
+                twist.linear.x = speed
+                self.cmd_pub.publish(twist)
+                traveled_distance = np.sqrt((self.current_x - start_x)**2 + (self.current_y - start_y)**2)
+                self.rate.sleep()
+        else:
+            # Time-based movement
+            move_duration = distance / speed  # Calculate the time needed to move
+            rospy.loginfo(f"Moving straight for {distance} meters (time-based, duration: {move_duration})")
+            twist.linear.x = speed
+            self.cmd_pub.publish(twist)
+            rospy.sleep(move_duration)  # Move for the calculated duration
+
+        # Stop the robot
+        twist.linear.x = 0.0
+        self.cmd_pub.publish(twist)
+        rospy.loginfo("Move straight completed.")
+        return True
+
+    def rotate(self, angle, angular_speed):
+        """
+        Rotates the robot by a given angle (in radians). Returns True if rotation is complete.
+        """
+        twist = Twist()
+        start_time = rospy.Time.now()
+        if self.use_feedback:
+            start_yaw = self.current_yaw
+            rospy.loginfo(f"Rotating by {np.degrees(angle)} degrees (using feedback)")
+            # Determine rotation direction based on shortest angular distance
+            if angle > 0:
+                direction = 1  # Rotate counterclockwise
+            else:
+                direction = -1 # Rotate clockwise
+
+            target_yaw = start_yaw + angle
+            if target_yaw > np.pi:
+                target_yaw -= 2 * np.pi
+            elif target_yaw < -np.pi:
+                target_yaw += 2 * np.pi
+            rotated_angle = 0.0
+
+            while abs(self.current_yaw - target_yaw) > 0.02: # a threshold of 0.02 radians
+                #rospy.loginfo(f"Rotating from {np.degrees(start_yaw)} to {np.degrees(target_yaw)}")
+                twist.angular.z = angular_speed * direction
+                self.cmd_pub.publish(twist)
+                #rospy.loginfo(f"Current yaw {np.degrees(self.current_yaw)}")
+                self.rate.sleep()
+        else:
+            # Time-based rotation
+            rotate_duration = abs(angle) / angular_speed # Calculate the time needed to rotate
+            rospy.loginfo(f"Rotating by {np.degrees(angle)} degrees (time-based, duration: {rotate_duration})")
+            direction = 1 if angle > 0 else -1
+            twist.angular.z = angular_speed * direction
+            self.cmd_pub.publish(twist)
+            rospy.sleep(rotate_duration)
+
+        # Stop the robot
+        twist.angular.z = 0.0
+        self.cmd_pub.publish(twist)
+        rospy.loginfo("Rotation completed.")
+        return True
+
 
 
     def image_callback(self, msg):
@@ -259,6 +481,45 @@ class RowCropFollower:
 
             # 1. Filter points using the tracker's current window position
             all_points = self.detect_potential_points(cv_image) # Detect points in the whole image
+
+            num_green_pixels = len(all_points)
+            rospy.loginfo(f"Number of green pixels: {num_green_pixels}")
+
+            # Check for end of row based on visual input *first*
+            if self.state == "following":
+
+                if num_green_pixels < 50:  # Adjust threshold
+                    self.no_green_frames += 1
+                    if self.no_green_frames >= self.no_green_threshold:
+                        rospy.loginfo("No crop row detected for multiple frames! Initiating turning maneuver.")
+                        self.state = "exiting"  # Transition to turning state
+                        self.initial_yaw = self.current_yaw #save the inital orientation
+                        self.initial_x = self.current_x #save the initial x position
+                        self.initial_y = self.current_y #save the initial y position
+                        self.no_green_frames = 0 # Reset the counter
+                        return  # Exit callback to start the turning process
+                else:
+                    self.no_green_frames = 0 # Reset counter if green pixels are detected
+
+                distance_traveled = np.sqrt((self.current_x - self.initial_x)**2 + (self.current_y - self.initial_y)**2)
+                rospy.loginfo(f"Distance traveled: {distance_traveled}")
+
+                # Wrong distance check (only if use_odometry is true)
+                if self.use_odometry:
+                    if distance_traveled > self.wrong_distance_threshold:
+                        rospy.logerr("ERROR: Wrong distance traveled! Stopping the robot.")
+                        twist = Twist()
+                        twist.linear.x = 0.0
+                        twist.angular.z = 0.0
+                        self.cmd_pub.publish(twist)
+                        return  # Stop further processing
+
+
+            # Execute turning maneuver if not following
+            elif self.state != "following":
+                self.execute_turning_maneuver()
+                return # Skip the rest of the image processing
+
             self.tracker.filter_points(all_points)
             points_in_neighbourhood = self.tracker.points_in_neighbourhood
 
@@ -281,9 +542,9 @@ class RowCropFollower:
             for pt in points_in_neighbourhood:
                 cv2.circle(display_frame, (int(pt[0]), int(pt[1])), 3, (0, 255, 255), -1)  # Yellow dots
 
-            if self.show_images:
-                cv2.imshow("Tracking Window", display_frame)
-                cv2.waitKey(1)
+            # Always show the camera screen
+            cv2.imshow("Tracking Window", display_frame)
+            cv2.waitKey(1)
 
             self.rate.sleep()
 
