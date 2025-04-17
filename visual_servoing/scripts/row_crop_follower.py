@@ -427,50 +427,45 @@ class RowCropFollower:
         self.cmd_pub.publish(twist)
         rospy.loginfo("Move straight completed.")
         return True
-
+    
     def rotate(self, angle, angular_speed):
         """
-        Rotates the robot by a given angle (in radians). Returns True if rotation is complete.
+        Rotates the robot by a given angle (in radians) using incremental feedback.
+        Returns True when the desired rotation is reached.
         """
+        # سجل نقطة البداية
+        start_yaw = self.current_yaw
+        prev_yaw = start_yaw
+        rotated = 0.0
+        direction = np.sign(angle)
+        target = abs(angle)
+
+        rospy.loginfo(f"Start Yaw: {np.degrees(start_yaw):.2f}°, Rotating {np.degrees(angle):.2f}° at {angular_speed} rad/s")
+
         twist = Twist()
-        start_time = rospy.Time.now()
-        if self.use_feedback:
-            start_yaw = self.current_yaw
-            rospy.loginfo(f"Rotating by {np.degrees(angle)} degrees (using feedback)")
-            # Determine rotation direction based on shortest angular distance
-            if angle > 0:
-                direction = 1  # Rotate counterclockwise
-            else:
-                direction = -1 # Rotate clockwise
+        rate = self.rate  # تأكد أنّ self.rate معرف مثلاً rospy.Rate(10)
 
-            target_yaw = start_yaw + angle
-            if target_yaw > np.pi:
-                target_yaw -= 2 * np.pi
-            elif target_yaw < -np.pi:
-                target_yaw += 2 * np.pi
-            rotated_angle = 0.0
-
-            while abs(self.current_yaw - target_yaw) > 0.02: # a threshold of 0.02 radians
-                #rospy.loginfo(f"Rotating from {np.degrees(start_yaw)} to {np.degrees(target_yaw)}")
-                twist.angular.z = angular_speed * direction
-                self.cmd_pub.publish(twist)
-                #rospy.loginfo(f"Current yaw {np.degrees(self.current_yaw)}")
-                self.rate.sleep()
-        else:
-            # Time-based rotation
-            rotate_duration = abs(angle) / angular_speed # Calculate the time needed to rotate
-            rospy.loginfo(f"Rotating by {np.degrees(angle)} degrees (time-based, duration: {rotate_duration})")
-            direction = 1 if angle > 0 else -1
-            twist.angular.z = angular_speed * direction
+        while abs(rotated) < target:
+            # حرك الروبوت
+            twist.angular.z = direction * angular_speed
             self.cmd_pub.publish(twist)
-            rospy.sleep(rotate_duration)
+            rate.sleep()
 
-        # Stop the robot
+            # احسب التغير الفعلي في yaw منذ آخر دورة
+            delta = np.arctan2(
+                np.sin(self.current_yaw - prev_yaw),
+                np.cos(self.current_yaw - prev_yaw)
+            )
+            rotated += delta
+            prev_yaw = self.current_yaw
+
+            rospy.logdebug(f"Rotated so far: {np.degrees(rotated):.2f}° / {np.degrees(target):.2f}°")
+
+        # أوقف المحرك
         twist.angular.z = 0.0
         self.cmd_pub.publish(twist)
         rospy.loginfo("Rotation completed.")
         return True
-
 
 
     def image_callback(self, msg):

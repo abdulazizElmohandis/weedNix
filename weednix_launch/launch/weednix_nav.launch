@@ -27,6 +27,11 @@
   <!-- <include file="$(find robot_description)/launch/controller.launch" /> -->
 
 
+<!-- Launch EKF -->
+<node pkg="robot_localization" type="ekf_localization_node" name="ekf_filter_node" output="screen">
+    <rosparam command="load" file="$(find weednix_launch)/config/ekf.yaml" />
+</node>
+
 
   
 </launch>

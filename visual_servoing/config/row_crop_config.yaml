@@ -2,16 +2,16 @@
 
 # --- FIELD PARAMETERS ---
 row_length: 10.0          # (meters) The expected length of each crop row.
-row_spacing: 1.0         # (meters) The distance between adjacent crop rows.
+row_spacing: 2.0         # (meters) The distance between adjacent crop rows.
 field_direction: "right"   # ("right" or "left") The direction the robot should turn at the end of the row.
 
 # --- END-OF-ROW DETECTION PARAMETERS ---
 end_of_row_threshold: 0.8  # (0.0 - 1.0) Percentage of row_length to consider the end of the row.
-wrong_distance_threshold: 12.0 # (meters) If the robot travels further than this, it's considered an error.
+wrong_distance_threshold: 500.0 # (meters) If the robot travels further than this, it's considered an error.
 use_odometry: true           # (boolean) Set to false to disable odometry-based checks (wrong_distance_threshold).
 
 # --- MOVEMENT FEEDBACK PARAMETER ---
-use_feedback: false # true          # (boolean) Set to false to disable feedback-based movement in move_straight and rotate
+use_feedback: true # true    #false      # (boolean) Set to false to disable feedback-based movement in move_straight and rotate
 
 # --- NEIGHBOURHOOD TRACKER PARAMETERS ---
 neighbourhood_width: 300     # (pixels) Width of the tracking window.
