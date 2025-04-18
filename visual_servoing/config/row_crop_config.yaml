@@ -2,14 +2,14 @@
 
 # --- FIELD PARAMETERS ---
 row_length: 14.0          # (meters) The expected length of each crop row.
-row_spacing: 2.0         # (meters) The distance between adjacent crop rows.
+row_spacing: 1        # (meters) The distance between adjacent crop rows.
 field_direction: "right"   # ("right" or "left") The direction the robot should turn at the end of the row.
 
 # --- ROW TRANSITION MANEUVER PARAMETERS ---
 A: 1.0                   # (meters) Distance to move forward when exiting/entering a row.
-theta_degrees: 45        # (degrees) Rotation angle (theta) for the turning maneuver.
-linear_speed: 0.6          # (m/s) Linear speed during the turning maneuver.
-angular_speed: 0.4         # (rad/s) Angular speed during the turning maneuver.
+theta_degrees: 45     # (degrees) Rotation angle (theta) for the turning maneuver.
+linear_speed: 0.1          # (m/s) Linear speed during the turning maneuver.
+angular_speed: 0.1         # (rad/s) Angular speed during the turning maneuver.
 
 # --- END-OF-ROW DETECTION PARAMETERS ---
 end_of_row_threshold: 0.9  # (0.0 - 1.0) Percentage of row_length to consider the end of the row.

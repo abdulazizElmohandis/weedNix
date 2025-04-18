@@ -279,8 +279,9 @@ class RowCropFollower:
         self.theta = np.radians(theta_degrees) # Convert to radians
         self.linear_speed = rospy.get_param('row_crop_follower/linear_speed')
         self.angular_speed = rospy.get_param('row_crop_follower/angular_speed')
+        
+        self.R = (self.row_spacing * np.sin(180 - (2 * self.theta)) / np.sin(self.theta))
 
-        self.R = self.row_spacing * np.sin(self.theta)
 
         # Neighbourhood Tracker Parameters (adjust these!)
         self.tracker = NeighbourhoodTracker(640, 480, self.initial_x, self.initial_y, self.neighbourhood_width, self.neighbourhood_height) # Image width and height
@@ -341,6 +342,13 @@ class RowCropFollower:
 
         if self.state == "exiting":
             rospy.loginfo("Exiting row...")
+
+            # SET INITIAL POSITION AND ORIENTATION HERE
+            self.initial_x = self.current_x
+            self.initial_y = self.current_y
+            self.initial_yaw = self.current_yaw
+            rospy.loginfo(f"Setting initial pose at start of exiting: X={self.initial_x:.2f}, Y={self.initial_y:.2f}, Yaw={np.degrees(self.initial_yaw):.2f}")
+
             # Move forward by distance A
             target_distance = self.A
             if self.move_straight(target_distance, self.linear_speed):
@@ -394,9 +402,11 @@ class RowCropFollower:
                 self.row_direction *= -1
                 rospy.loginfo(f"Moving to row: {self.row_count}, Direction: {'Forward' if self.row_direction == 1 else 'Backward'}")
 
+                # KEEP THIS HERE - Update initial pose AFTER entering the new row
                 self.initial_x = self.current_x
                 self.initial_y = self.current_y
                 self.initial_yaw = self.current_yaw
+                rospy.loginfo(f"Setting initial pose at end of entering (new row): X={self.initial_x:.2f}, Y={self.initial_y:.2f}, Yaw={np.degrees(self.initial_yaw):.2f}")
 
         else:
             # Should not happen
@@ -406,6 +416,7 @@ class RowCropFollower:
             twist.angular.z = 0.0
             self.cmd_pub.publish(twist)
             return
+   
 
     def move_straight(self, distance, speed):
         """
