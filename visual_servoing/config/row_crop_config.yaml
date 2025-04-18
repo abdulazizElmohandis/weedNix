@@ -1,23 +1,29 @@
 # row_crop_config.yaml
 
 # --- FIELD PARAMETERS ---
-row_length: 10.0          # (meters) The expected length of each crop row.
+row_length: 14.0          # (meters) The expected length of each crop row.
 row_spacing: 2.0         # (meters) The distance between adjacent crop rows.
 field_direction: "right"   # ("right" or "left") The direction the robot should turn at the end of the row.
 
+# --- ROW TRANSITION MANEUVER PARAMETERS ---
+A: 1.0                   # (meters) Distance to move forward when exiting/entering a row.
+theta_degrees: 45        # (degrees) Rotation angle (theta) for the turning maneuver.
+linear_speed: 0.6          # (m/s) Linear speed during the turning maneuver.
+angular_speed: 0.4         # (rad/s) Angular speed during the turning maneuver.
+
 # --- END-OF-ROW DETECTION PARAMETERS ---
-end_of_row_threshold: 0.8  # (0.0 - 1.0) Percentage of row_length to consider the end of the row.
-wrong_distance_threshold: 500.0 # (meters) If the robot travels further than this, it's considered an error.
+end_of_row_threshold: 0.9  # (0.0 - 1.0) Percentage of row_length to consider the end of the row.
+wrong_distance_threshold: 20.0 # (meters) If the robot travels further than this, it's considered an error.
 use_odometry: true           # (boolean) Set to false to disable odometry-based checks (wrong_distance_threshold).
 
 # --- MOVEMENT FEEDBACK PARAMETER ---
-use_feedback: true # true    #false      # (boolean) Set to false to disable feedback-based movement in move_straight and rotate
+use_feedback: true           # true OR false    (boolean) Set to false to disable feedback-based movement in move_straight and rotate
 
 # --- NEIGHBOURHOOD TRACKER PARAMETERS ---
-neighbourhood_width: 300     # (pixels) Width of the tracking window.
+neighbourhood_width: 150     # (pixels) Width of the tracking window.
 neighbourhood_height: 200    # (pixels) Height of the tracking window.
-initial_x: 320             # (pixels) Initial X coordinate of the tracking window center.
-initial_y: 240             # (pixels) Initial Y coordinate of the tracking window center.
+initial_x: 320               # (pixels) Initial X coordinate of the tracking window center.
+initial_y: 240               # (pixels) Initial Y coordinate of the tracking window center.
 
 # --- HSV COLOR FILTER PARAMETERS (for green crop rows) ---
 h_min: 35                  # (degrees) Minimum Hue value.
@@ -30,9 +36,3 @@ v_max: 255                 # (0-255) Maximum Value (Brightness) value.
 # --- LINE FOLLOWING PARAMETERS ---
 point_spacing: 70          # (pixels)  Spacing used when sampling points from the detected crop row.
 kp: 0.005                # Proportional gain for steering control.
-
-# --- ROW TRANSITION MANEUVER PARAMETERS ---
-A: 1.0                   # (meters) Distance to move forward when exiting/entering a row.
-theta_degrees: 45        # (degrees) Rotation angle (theta) for the turning maneuver.
-linear_speed: 0.2          # (m/s) Linear speed during the turning maneuver.
-angular_speed: 0.1         # (rad/s) Angular speed during the turning maneuver.

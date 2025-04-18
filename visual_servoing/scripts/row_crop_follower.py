@@ -302,6 +302,10 @@ class RowCropFollower:
         self.no_green_frames = 0 # Counter for consecutive frames with low green pixels
         self.no_green_threshold = 3 # Number of consecutive frames required to trigger turn
 
+        # NEW: Row Counter and Direction
+        self.row_count = 1  # Start at row 1
+        self.row_direction = 1  # 1 for forward, -1 for backward
+
     def load_yaml(self, file_path):
         """
         Load YAML data from a file.
@@ -345,7 +349,7 @@ class RowCropFollower:
 
         elif self.state == "rotating1":
             # Rotate by angle theta
-            target_angle = self.theta
+            target_angle = self.theta * self.row_direction  # <--- Modified
             if self.rotate(target_angle, self.angular_speed):
                 self.state = "diagonal1"
                 rospy.loginfo("Rotating 1 complete. Moving Diagonally...")
@@ -359,7 +363,7 @@ class RowCropFollower:
 
         elif self.state == "rotating2":
             # Rotate by angle (180 - 2*theta)
-            target_angle = np.pi - 2 * self.theta  # 180 degrees - 2*theta
+            target_angle = (np.pi - 2 * self.theta) * self.row_direction  # <--- Modified
             if self.rotate(target_angle, self.angular_speed):
                 self.state = "diagonal2"
                 rospy.loginfo("Rotating 2 complete. Moving Diagonally...")
@@ -373,7 +377,7 @@ class RowCropFollower:
 
         elif self.state == "rotating3":
             # Rotate by angle theta
-            target_angle = self.theta
+            target_angle = self.theta * self.row_direction  # <--- Modified
             if self.rotate(target_angle, self.angular_speed):
                 self.state = "entering"
                 rospy.loginfo("Rotating 3 complete. Entering row...")
@@ -384,6 +388,12 @@ class RowCropFollower:
             if self.move_straight(target_distance, self.linear_speed):
                 rospy.loginfo("Entering row complete. Switching to following...")
                 self.state = "following"
+
+                # NEW: Update row count and direction
+                self.row_count += 1
+                self.row_direction *= -1
+                rospy.loginfo(f"Moving to row: {self.row_count}, Direction: {'Forward' if self.row_direction == 1 else 'Backward'}")
+
                 self.initial_x = self.current_x
                 self.initial_y = self.current_y
                 self.initial_yaw = self.current_yaw
@@ -433,7 +443,7 @@ class RowCropFollower:
         Rotates the robot by a given angle (in radians) using incremental feedback.
         Returns True when the desired rotation is reached.
         """
-        # سجل نقطة البداية
+        # Record the starting yaw
         start_yaw = self.current_yaw
         prev_yaw = start_yaw
         rotated = 0.0
@@ -443,15 +453,15 @@ class RowCropFollower:
         rospy.loginfo(f"Start Yaw: {np.degrees(start_yaw):.2f}°, Rotating {np.degrees(angle):.2f}° at {angular_speed} rad/s")
 
         twist = Twist()
-        rate = self.rate  # تأكد أنّ self.rate معرف مثلاً rospy.Rate(10)
+        rate = self.rate   # Make sure self.rate is defined, e.g., rospy.Rate(10)
 
         while abs(rotated) < target:
-            # حرك الروبوت
+            #Rotate the robot
             twist.angular.z = direction * angular_speed
             self.cmd_pub.publish(twist)
             rate.sleep()
 
-            # احسب التغير الفعلي في yaw منذ آخر دورة
+            # Calculate the actual change in yaw since the last loop 
             delta = np.arctan2(
                 np.sin(self.current_yaw - prev_yaw),
                 np.cos(self.current_yaw - prev_yaw)
@@ -461,7 +471,7 @@ class RowCropFollower:
 
             rospy.logdebug(f"Rotated so far: {np.degrees(rotated):.2f}° / {np.degrees(target):.2f}°")
 
-        # أوقف المحرك
+        # Stop the rotation
         twist.angular.z = 0.0
         self.cmd_pub.publish(twist)
         rospy.loginfo("Rotation completed.")
